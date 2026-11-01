@@ -42,3 +42,18 @@ jobs:
         run: |
           npm ci
           npm run build
+      - name: Start the API
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+        run: |
+          nohup dotnet run --project src/Ticketing.Api --no-build --urls http://localhost:5080 > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:5080/health && break; sleep 2; done
+          curl -sf http://localhost:5080/health
+      - name: Run browser tests
+        working-directory: web
+        run: |
+          npx playwright install --with-deps chromium
+          npm run e2e
+      - name: Show API log on failure
+        if: failure()
+        run: tail -50 api.log
