@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: LocalDev_Passw0rd!
+        ports:
+          - 1434:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'LocalDev_Passw0rd!' -Q 'SELECT 1'"
+          --health-interval 5s
+          --health-retries 40
+          --health-start-period 15s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Check for vulnerable packages
+        run: |
+          dotnet restore
+          ! dotnet list package --vulnerable --include-transitive | grep -E "Critical|High"
+      - name: Build
+        run: dotnet build --no-restore -warnaserror
+      - name: Test against real SQL Server
+        run: dotnet test --no-build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the web app
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
