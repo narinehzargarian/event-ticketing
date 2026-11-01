@@ -6,14 +6,15 @@ using Ticketing.Api.Data;
 
 namespace Ticketing.Api.Services;
 
-public class TokenService(IConfiguration config, TimeProvider clock)
+public class TokenService(IConfiguration config)
 {
     public const string Issuer = "ticketing-api";
 
     public string Create(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));
-        var now = clock.GetUtcNow().UtcDateTime;
+        // Real time on purpose, because that's what the JWT library validates against.
+        var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(
             issuer: Issuer,
             audience: Issuer,
